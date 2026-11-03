@@ -2,7 +2,7 @@
 
 **Um perceptrão não consegue aprender o XOR. Uma rede ReLU 2→4→1 consegue.** Este repositório mostra porquê: demonstração, derivação completa de backpropagation, experiências com regularização L1 e simulações interativas.
 
-- Apresentação interativa: https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/
+- Apresentação interativa: https://bastianpd.github.io/xor-nonlinearity-mlp/
 - Notebook (corre na tua própria sessão Colab): [abrir no Colab](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb)
 - Página para o portfólio: [`portfolio/xor-nonlinearity.html`](portfolio/xor-nonlinearity.html)
 
