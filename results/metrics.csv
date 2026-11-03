@@ -1,0 +1,4 @@
+model,acc_train,acc_test,bce_train,bce_test,R_train,L_total_train,frac_A1_zero_train,mean_abs_A1_train,frac_A1_zero_test,mean_abs_A1_test
+Logistic regression,0.6567,0.5400,0.6908,0.7067,,,,,,
+MLP lambda=0,1.0000,0.9800,0.0011,0.0332,0.0000,0.0011,0.5375,1.6606,0.5250,1.6711
+MLP lambda=0.005,1.0000,0.9800,0.0043,0.0565,0.0152,0.0195,0.6200,0.7594,0.5925,0.7671

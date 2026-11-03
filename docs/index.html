@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XOR: Why Nonlinearity Is Necessary</title>
+  <meta name="description" content="Interactive walkthrough of why a single perceptron cannot solve XOR and how a 2→4→1 ReLU MLP does it: proof, backpropagation from scratch in NumPy, L1 sparsity, linear regions and a live network simulator.">
+  <meta name="keywords" content="XOR problem, perceptron limitations, multilayer perceptron, ReLU, nonlinear activation function, backpropagation from scratch, NumPy, L1 regularization, sparse activations, decision boundary, linear regions, interactive neural network visualization">
+  <meta name="author" content="Pedro de Sousa Sebastião">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="XOR: Why Nonlinearity Is Necessary">
+  <meta property="og:description" content="Why a perceptron fails on XOR and how a ReLU MLP fixes it, with live simulations.">
+  <meta property="og:image" content="figures/boundary_lambda005.png">
+  <style>
+    :root {
+      --o: #e0662b;
+      --b: #2b7fd9;
+      --g: #1f9d6b;
+      --p: #7a4fd0;
+      --fg: #1d2433;
+      --mut: #5d6578;
+      --bd: #e3e7ef;
+      --tint: #f5f8ff
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: var(--fg);
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif
+    }
+
+    header {
+      padding: 70px 20px 50px;
+      text-align: center;
+      background: linear-gradient(135deg, #fff3ec, #eef5ff 55%, #f3edff)
+    }
+
+    header h1 {
+      font: 700 clamp(32px, 6vw, 56px)/1.1 Georgia, serif;
+      margin: 0 0 18px
+    }
+
+    header p {
+      margin: 3px 0;
+      color: var(--mut)
+    }
+
+    header b {
+      color: var(--fg);
+      font-size: 20px
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fffffff0;
+      border-bottom: 1px solid var(--bd);
+      text-align: center;
+      padding: 6px;
+      font-size: 13px;
+      backdrop-filter: blur(6px)
+    }
+
+    nav a {
+      color: var(--mut);
+      text-decoration: none;
+      margin: 0 7px
+    }
+
+    nav a:hover {
+      color: var(--o)
+    }
+
+    section {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 60px 18px 20px
+    }
+
+    .n {
+      display: inline-block;
+      background: var(--c, var(--o));
+      color: #fff;
+      border-radius: 20px;
+      padding: 2px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .5px
+    }
+
+    h2 {
+      font: 700 30px/1.2 Georgia, serif;
+      margin: 8px 0 12px
+    }
+
+    .lead {
+      color: var(--mut);
+      margin: 0 0 18px
+    }
+
+    .card {
+      border: 1px solid var(--bd);
+      border-left: 5px solid var(--c, var(--o));
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin: 14px 0;
+      background: var(--tint)
+    }
+
+    .eq {
+      font: 15px/1.9 "Cambria Math", Georgia, serif;
+      overflow-x: auto;
+      white-space: nowrap
+    }
+
+    .eq i {
+      color: var(--mut);
+      font: 12px system-ui;
+      margin-left: 10px
+    }
+
+    code {
+      background: #eef1f8;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: .92em
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      align-items: center;
+      margin-top: 10px
+    }
+
+    label.s {
+      flex: 1 1 150px;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column
+    }
+
+    input[type=range] {
+      width: 100%
+    }
+
+    button {
+      font: inherit;
+      font-size: 14px;
+      padding: 7px 13px;
+      border-radius: 8px;
+      border: 1px solid var(--bd);
+      background: #fff;
+      cursor: pointer
+    }
+
+    button.on {
+      background: var(--fg);
+      color: #fff;
+      border-color: var(--fg)
+    }
+
+    canvas {
+      width: 100%;
+      display: block;
+      touch-action: none;
+      cursor: grab;
+      border: 1px solid var(--bd);
+      border-radius: 10px
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+      text-align: center
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--bd);
+      padding: 6px
+    }
+
+    .bad {
+      background: #ffe9e4;
+      color: #b3261e;
+      font-weight: 600
+    }
+
+    .big {
+      font: 700 24px Georgia, serif
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px
+    }
+
+    .slot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 200px;
+      border: 2px dashed #b9c2d6;
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--mut);
+      font-size: 14px;
+      cursor: pointer;
+      background: #fafbff;
+      position: relative
+    }
+
+    .slot input {
+      display: none
+    }
+
+    .slot img {
+      display: none;
+      width: 100%;
+      border-radius: 8px
+    }
+
+    .slot.has {
+      border: 1px solid var(--bd);
+      padding: 4px
+    }
+
+    .slot.has img {
+      display: block
+    }
+
+    .slot.has span {
+      display: none
+    }
+
+
+    .fig{margin:0;border:1px solid var(--bd);border-radius:12px;background:#fff;overflow:hidden}
+    .fig img{display:block;width:100%;height:auto;cursor:zoom-in}
+    .fig figcaption{padding:10px 14px;font-size:14px;color:var(--mut);border-top:1px solid var(--bd);background:var(--tint)}
+    .fig figcaption b{color:var(--fg)}
+    .figs{display:grid;gap:16px;margin:14px 0}
+    .figs.c2{grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr))}
+    .figs.c1{grid-template-columns:1fr}
+    #s8,#refs{max-width:1100px}
+    pre.out{background:#1d2433;color:#e9edf6;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.5;overflow-x:auto;margin:8px 0 0}
+    .hl{background:#e6f6ee;font-weight:600}
+    ol.refs{padding-left:22px;font-size:15px;line-height:1.55}ol.refs li{margin:0 0 9px}
+    ol.refs a{color:var(--b)}
+    .star{display:inline-block;background:#ffd43b;color:#1d2433;border-radius:6px;font-size:11px;font-weight:700;padding:1px 6px;margin-left:6px;vertical-align:1px}
+    code{overflow-wrap:anywhere}
+    #lb2{position:fixed;inset:0;background:#0b0f1ae6;display:none;align-items:center;justify-content:center;z-index:50;cursor:zoom-out;padding:16px}
+    #lb2 img{max-width:100%;max-height:100%;background:#fff;border-radius:8px}
+
+    footer {
+      text-align: center;
+      color: var(--mut);
+      padding: 50px 20px;
+      font-size: 14px
+    }
+
+    .g2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      align-items: start
+    }
+
+    .tg th,
+    .tg td {
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.5
+    }
+
+    .tg td:first-child {
+      white-space: nowrap;
+      font-weight: 600
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin: 6px 0
+    }
+
+    .chips button {
+      padding: 4px 10px;
+      font-size: 13px
+    }
+
+    .pb {
+      padding: 2px 8px;
+      font-size: 13px
+    }
+
+    .pb.on {
+      background: #ffd43b;
+      color: #1d2433;
+      border-color: #e0b400
+    }
+
+    #gn {
+      width: 100%;
+      display: block;
+      max-width: 560px;
+      margin: auto
+    }
+
+    .sm {
+      font-size: 13.5px;
+      color: var(--mut)
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>XOR: Why Nonlinearity Is Necessary</h1>
+    <p><b>Pedro de Sousa Sebastião</b></p>
+    <p>Graduate Program in Electrical and Industrial Computer Engineering — CPGEI</p>
+    <p>Federal University of Technology – Paraná (UTFPR)</p>
+    <p style="margin-top:14px"><a href="https://github.com/SEU-USUARIO/xor-nonlinearity-mlp" style="color:var(--b)">GitHub repository</a> · <a href="https://colab.research.google.com/github/SEU-USUARIO/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb" style="color:var(--b)">Run the notebook in Colab</a></p>
+    <p style="margin-top:14px">XOR with a 2 → 4 → 1 ReLU MLP · L1 hidden-activity regularization (λ = 0.005) · seed = 67
+    </p>
+  </header>
+  <nav><a href="#s1">Cluster</a><a href="#s2">XOR gate</a><a href="#s3">Geometry</a><a href="#s4">Perceptron</a><a
+      href="#s5">MLP</a><a href="#s6">L1</a><a href="#s7">Hidden lines</a><a href="#sg">Live network</a><a
+      href="#s8">Results</a><a href="#refs">References</a></nav>
+
+  <section id="s1" style="--c:var(--o)">
+    <span class="n">1 · THE DATA</span>
+    <h2>What is a Gaussian cluster?</h2>
+    <p class="lead">A cloud of points scattered around a centre, with a spread controlled by σ.</p>
+    <div class="card">
+      <div class="eq">
+        x = μ<sub>k</sub> + σ·ε, &nbsp; ε ~ 𝒩(0, I<sub>2</sub>) &nbsp;⇔&nbsp; x | k ~ 𝒩(μ<sub>k</sub>,
+        σ²I<sub>2</sub>)<br>
+        p(x | k) = 1 / (2πσ²) · exp( −‖x − μ<sub>k</sub>‖² / 2σ² )</div>
+      <p style="margin:6px 0 0">Level sets are circles around μ<sub>k</sub>; about 95 % of the points lie within 2σ. Our
+        four centres sit at the corners of a square: <code>(1,1) (−1,−1) (−1,1) (1,−1)</code>.</p>
+    </div>
+  </section>
+
+  <section id="s2" style="--c:var(--b)">
+    <span class="n" style="background:var(--b)">2 · THE OPERATOR</span>
+    <h2>XOR, on its own</h2>
+    <p class="lead">Output is 1 only when the inputs differ. Equivalent form with elementary gates: A⊕B = A·B̄ + Ā·B.
+      Toggle the inputs.</p>
+    <div class="card" style="--c:var(--b)">
+      <div class="row" style="margin:0 0 6px"><b>A</b><button id="bA">0</button><b>B</b><button id="bB">0</button>
+        <span id="gtxt" style="margin-left:auto"></span>
+      </div>
+      <svg id="gate" viewBox="0 0 520 250" width="100%" style="max-width:640px;display:block;margin:auto" fill="none"
+        stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <g stroke="#b9c2d6">
+          <path id="wA1" d="M50,45H230" />
+          <path id="wA2" d="M80,45V185H140" />
+          <path id="wB1" d="M50,205H230" />
+          <path id="wB2" d="M110,205V65H140" />
+          <path id="wnB" d="M176,65H230" />
+          <path id="wnA" d="M176,185H230" />
+          <path id="wt1" d="M285,55H315V112H345" />
+          <path id="wt2" d="M285,195H315V138H345" />
+          <path id="wO" d="M395,125H455" />
+        </g>
+        <g stroke="#1d2433" fill="#fff">
+          <path d="M230,30H260A25,25 0 0 1 260,80H230Z" />
+          <path d="M230,170H260A25,25 0 0 1 260,220H230Z" />
+          <path d="M140,52L168,65L140,78Z" />
+          <circle cx="172" cy="65" r="4" />
+          <path d="M140,172L168,185L140,198Z" />
+          <circle cx="172" cy="185" r="4" />
+          <path d="M340,100Q365,100 395,125Q365,150 340,150Q352,125 340,100Z" />
+        </g>
+        <g font="13px system-ui" fill="#5d6578" stroke="none" font-size="13"><text x="238" y="60">AND</text><text
+            x="238" y="200">AND</text><text x="352" y="130">OR</text>
+          <text x="292" y="45">A·B̄</text><text x="292" y="185">Ā·B</text><text x="20" y="50">A</text><text x="20"
+            y="210">B</text>
+        </g>
+        <circle id="oc" cx="475" cy="125" r="17" stroke="#1d2433" fill="#fff" /><text id="ot" x="475" y="131"
+          text-anchor="middle" font-size="18" font-weight="700" fill="#1d2433" stroke="none">0</text>
+      </svg>
+      <table style="max-width:420px;margin:10px auto 0">
+        <tr>
+          <th>A</th>
+          <th>B</th>
+          <th>A·B̄</th>
+          <th>Ā·B</th>
+          <th>A⊕B</th>
+        </tr>
+        <tr id="r00">
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+        </tr>
+        <tr id="r01">
+          <td>0</td>
+          <td>1</td>
+          <td>0</td>
+          <td>1</td>
+          <td>1</td>
+        </tr>
+        <tr id="r10">
+          <td>1</td>
+          <td>0</td>
+          <td>1</td>
+          <td>0</td>
+          <td>1</td>
+        </tr>
+        <tr id="r11">
+          <td>1</td>
+          <td>1</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s3" style="--c:var(--g)">
+    <span class="n" style="background:var(--g)">3 · THE BRIDGE</span>
+    <h2>From clusters to XOR outputs</h2>
+    <p class="lead">Each centre is a pair of bits (−1 ↔ 0, +1 ↔ 1) and its class is the XOR output. Drag the centres,
+      change σ, then try to separate the classes with a line <code>w₁x₁ + w₂x₂ + b = 0</code>.</p>
+    <div class="card" style="--c:var(--g)">
+      <div class="row" style="margin:0 0 10px"><button id="mC" class="on">Colour by cluster</button><button
+          id="mX">Colour by XOR class</button><button id="mL">Show line</button></div>
+      <canvas id="cv"></canvas>
+      <div class="row">
+        <label class="s">σ: <b id="sv">0.35</b><input id="s" type="range" min="0.1" max="1" step="0.05"
+            value="0.35"></label>
+        <label class="s">Points / cluster: <b id="nv">60</b><input id="n" type="range" min="10" max="200" step="10"
+            value="60"></label>
+        <button id="rs">Resample</button><button id="rc">Reset centres</button>
+      </div>
+      <div id="lb" style="display:none">
+        <div class="row">
+          <label class="s">w₁: <b id="w1v">1.00</b><input id="w1" type="range" min="-3" max="3" step="0.05"
+              value="1"></label>
+          <label class="s">w₂: <b id="w2v">1.00</b><input id="w2" type="range" min="-3" max="3" step="0.05"
+              value="1"></label>
+          <label class="s">b: <b id="bv">0.00</b><input id="b" type="range" min="-3" max="3" step="0.05"
+              value="0"></label>
+          <button id="best">Search best line</button>
+        </div>
+        <p style="margin:10px 0 0">ŷ = 1 if w₁x₁ + w₂x₂ + b ≥ 0 &nbsp;→&nbsp; accuracy <span class="big"
+            id="acc">–</span> <span style="color:var(--mut)">(never above 75 %: one cluster is always wrong)</span></p>
+      </div>
+      <p id="lg" style="color:var(--mut);font-size:14px;margin:8px 0 0"></p>
+    </div>
+    <div class="card" style="--c:var(--g)">
+      <table>
+        <tr>
+          <th>Centre</th>
+          <th>x₁</th>
+          <th>x₂</th>
+          <th>x₁⊕x₂</th>
+          <th>Class</th>
+        </tr>
+        <tr>
+          <td>(−1,−1)</td>
+          <td>0</td>
+          <td>0</td>
+          <td>0</td>
+          <td><span class="dot" style="background:#e0662b"></span>0</td>
+        </tr>
+        <tr>
+          <td>(1,1)</td>
+          <td>1</td>
+          <td>1</td>
+          <td>0</td>
+          <td><span class="dot" style="background:#e0662b"></span>0</td>
+        </tr>
+        <tr>
+          <td>(−1,1)</td>
+          <td>0</td>
+          <td>1</td>
+          <td>1</td>
+          <td><span class="dot" style="background:#2b7fd9"></span>1</td>
+        </tr>
+        <tr>
+          <td>(1,−1)</td>
+          <td>1</td>
+          <td>0</td>
+          <td>1</td>
+          <td><span class="dot" style="background:#2b7fd9"></span>1</td>
+        </tr>
+      </table>
+      <p style="margin:8px 0 0">Class 0 ⇔ x₁·x₂ &gt; 0 (one diagonal) · class 1 ⇔ x₁·x₂ &lt; 0 (the other diagonal).</p>
+    </div>
+  </section>
+
+  <section id="s4" style="--c:#d6336c">
+    <span class="n" style="background:#d6336c">4 · THE PROOF</span>
+    <h2>No perceptron can solve XOR</h2>
+    <p class="lead">Suppose weights w₁, w₂ and bias b exist with ŷ = 1 ⇔ w₁x₁ + w₂x₂ + b ≥ 0. All four rows would have
+      to hold at once:</p>
+    <div class="card" style="--c:#d6336c">
+      <table>
+        <tr>
+          <th>Input</th>
+          <th>Target</th>
+          <th>Requirement</th>
+        </tr>
+        <tr>
+          <td>(0,0)</td>
+          <td>0</td>
+          <td>b &lt; 0</td>
+        </tr>
+        <tr>
+          <td>(0,1)</td>
+          <td>1</td>
+          <td>w₂ + b ≥ 0</td>
+        </tr>
+        <tr>
+          <td>(1,0)</td>
+          <td>1</td>
+          <td>w₁ + b ≥ 0</td>
+        </tr>
+        <tr>
+          <td>(1,1)</td>
+          <td>0</td>
+          <td>w₁ + w₂ + b &lt; 0</td>
+        </tr>
+      </table>
+      <div class="eq" style="margin-top:10px">Add rows 2 and 3: &nbsp;w₁ + w₂ + 2b ≥ 0 &nbsp;⇒&nbsp; w₁ + w₂ + b ≥ −b
+        &gt; 0 &nbsp;(since b &lt; 0)</div>
+      <p class="bad" style="padding:8px 12px;border-radius:8px;margin:10px 0 0">Contradiction: row 4 demands w₁ + w₂ + b
+        &lt; 0, but rows 1–3 force w₁ + w₂ + b &gt; 0. No solution exists.</p>
+      <p style="margin:10px 0 0">Geometrically: the segments joining equal-class points (the two diagonals) cross at the
+        origin, and a half-plane is convex, so it cannot contain both ends of a diagonal without containing their
+        midpoint, which belongs to the other class's diagonal.</p>
+    </div>
+  </section>
+
+  <section id="s5" style="--c:var(--p)">
+    <span class="n" style="background:var(--p)">5 · THE FIX</span>
+    <h2>A hidden ReLU layer: 2 → 4 → 1</h2>
+    <p class="lead">m = batch size. Every equation is shown with its shapes.</p>
+    <div class="card" style="--c:var(--p)"><b>Forward</b>
+      <div class="eq">
+        Z₁ = X W₁ + b₁ <i>(m×2)(2×4)+(1×4) → m×4</i><br>
+        A₁ = ReLU(Z₁) = max(0, Z₁) <i>m×4</i><br>
+        Z₂ = A₁ W₂ + b₂ <i>(m×4)(4×1)+(1×1) → m×1</i><br>
+        Ŷ = σ(Z₂) = 1/(1+e<sup>−Z₂</sup>) <i>m×1</i><br>
+        L<sub>BCE</sub> = −(1/m) Σ [ y ln ŷ + (1−y) ln(1−ŷ) ]</div>
+    </div>
+    <div class="card" style="--c:var(--p)"><b>Backward (chain rule, from the loss to the parameters)</b>
+      <div class="eq">
+        ∂L/∂ŷ = (1/m)(ŷ − y)/(ŷ(1−ŷ)), &nbsp; σ′(z) = ŷ(1−ŷ) &nbsp;⇒&nbsp; <b>dZ₂ = (Ŷ − Y)/m</b> <i>m×1</i><br>
+        Z₂ = A₁W₂ + b₂ &nbsp;⇒&nbsp; <b>dW₂ = A₁ᵀ dZ₂</b> <i>(4×m)(m×1) → 4×1</i><br>
+        <b>db₂ = Σ<sub>rows</sub> dZ₂</b> <i>1×1</i> &nbsp;·&nbsp; <b>dA₁ = dZ₂ W₂ᵀ</b> <i>(m×1)(1×4) → m×4</i><br>
+        A₁ = ReLU(Z₁) &nbsp;⇒&nbsp; <b>dZ₁ = dA₁ ⊙ 1[Z₁ &gt; 0]</b> <i>m×4, pointwise</i><br>
+        Z₁ = XW₁ + b₁ &nbsp;⇒&nbsp; <b>dW₁ = Xᵀ dZ₁</b> <i>(2×m)(m×4) → 2×4</i> &nbsp;·&nbsp; <b>db₁ = Σ<sub>rows</sub>
+          dZ₁</b> <i>1×4</i>
+      </div>
+      <p style="margin:6px 0 0;color:var(--mut);font-size:15px">Transposes align the contracted index (the batch) ; sums
+        over rows appear because each bias is shared by all m samples; ⊙ appears because ReLU acts element by element.
+      </p>
+    </div>
+    <div class="card" style="--c:var(--p)"><b>Gradient check (one W₁ entry, one W₂ entry, on the TOTAL objective)</b>
+      <div class="eq">
+        g<sub>num</sub> = [ L(θ + ε e) − L(θ − ε e) ] / 2ε, &nbsp; ε = 10⁻⁶ &nbsp;·&nbsp; rel. error = |g<sub>num</sub>
+        − g| / (|g<sub>num</sub>| + |g|)</div>
+      <p style="margin:6px 0 0;font-size:15px">Use a θ where no Z₁ entry is within ε of 0, so the finite difference
+        never straddles the ReLU kink or the sign(0) point.</p>
+    </div>
+  </section>
+
+  <section id="s6" style="--c:var(--o)">
+    <span class="n">6 · THE REGULARIZER</span>
+    <h2>L1 hidden-activity penalty, λ = 0.005</h2>
+    <div class="card">
+      <div class="eq">
+        R = (λ/m) ‖A₁‖₁ = (λ/m) Σ<sub>i,j</sub> |A₁,ij| &nbsp;·&nbsp; L<sub>total</sub> = L<sub>BCE</sub> + R<br>
+        ∂R/∂A₁ = (λ/m) sign(A₁) &nbsp;⇒&nbsp; <b>dA₁,total = dZ₂W₂ᵀ + (λ/m) sign(A₁)</b> <i>m×4</i><br>
+        then, unchanged: dZ₁ = dA₁,total ⊙ 1[Z₁ &gt; 0], dW₁ = XᵀdZ₁, db₁ = Σ dZ₁</div>
+      <p style="margin:6px 0 0">The penalty enters <b>before</b> the ReLU backward step. Since A₁ ≥ 0, sign(A₁) = 1
+        where a unit is active and 0 where it is off (convention sign(0) = 0), so it pushes active pre-activations down,
+        but only through units that are active.</p>
+    </div>
+    <div class="card"><b>What is it encouraging?</b>
+      <p style="margin:4px 0 0">ReLU already produces exact zeros, but only as a by-product. L1 explicitly rewards
+        <i>more</i> zeros and smaller activations, i.e. units that fire for fewer inputs and regions that are carved
+        more tightly. This does not guarantee a better accuracy: sparser can mean a less flexible boundary.</p>
+    </div>
+  </section>
+
+  <section id="s7" style="--c:var(--b)">
+    <span class="n" style="background:var(--b)">7 · THE GEOMETRY</span>
+    <h2>Hidden neurons are lines</h2>
+    <div class="card" style="--c:var(--b)">
+      <div class="eq">Z<sub>1,j</sub> = x₁W₁[1,j] + x₂W₁[2,j] + b₁[j] = 0 &nbsp;— a straight line in the input plane,
+        one for each j = 1…4</div>
+      <p style="margin:6px 0 0">On one side ReLU outputs 0 (unit off), on the other it passes the affine value through.
+        The four lines cut the plane into at most 1 + 4 + C(4,2) = 11 regions; inside each region the network is a
+        single affine map, and the sigmoid of that affine map gives the piecewise-linear boundary Z₂ = 0.</p>
+    </div>
+    <div class="card" style="--c:var(--b)"><b>A hand-built solution</b>
+      <div class="eq">h₁ = ReLU(x₁ − x₂), &nbsp; h₂ = ReLU(x₂ − x₁), &nbsp; z = h₁ + h₂ = |x₁ − x₂|<br>→ 0 on class 0, 2
+        on class 1: threshold at 1 gives XOR exactly.</div>
+      <p style="margin:6px 0 0">Two hidden lines (x₁ = x₂ for both) already make the 'bend' that one line cannot. The
+        remaining units add flexibility. <b>Section 8</b> shows these lines alive, with the activation and sensitivity
+        of every parameter.</p>
+    </div>
+  </section>
+
+  <section id="sg" style="--c:#7a4fd0">
+    <span class="n" style="background:#7a4fd0">8 · LIVE NETWORK</span>
+    <h2>The network as geometry: activation and sensitivity</h2>
+    <p class="lead">The same 2 → 4 → 1 ReLU MLP of Section 5, now alive. Move the probe, drag any parameter, and see
+      which neuron switches on and how much each parameter moves the output.</p>
+
+    <div class="card" style="--c:#7a4fd0"><b>Algebra ⇄ geometry, neuron by neuron</b>
+      <table class="tg" style="margin-top:6px">
+        <tr>
+          <th></th>
+          <th>Algebraic definition</th>
+          <th>Geometric meaning in the (x₁, x₂) plane</th>
+        </tr>
+        <tr>
+          <td>Pre-activation</td>
+          <td>z<sub>j</sub> = W₁[1,j]x₁ + W₁[2,j]x₂ + b₁[j] = w<sub>j</sub>·x + b₁[j]</td>
+          <td>Line L<sub>j</sub>: z<sub>j</sub> = 0. The vector w<sub>j</sub> is its normal and the line sits at
+            distance −b₁[j]/‖w<sub>j</sub>‖ from the origin. The quantity z<sub>j</sub>/‖w<sub>j</sub>‖ is the <b>signed
+              distance</b> from the point to L<sub>j</sub>.</td>
+        </tr>
+        <tr>
+          <td>ReLU</td>
+          <td>a<sub>j</sub> = max(0, z<sub>j</sub>)</td>
+          <td>The plane is <b>folded</b> along L<sub>j</sub>: flat zero on the off side, a ramp of slope ‖w<sub>j</sub>‖
+            on the on side, a<sub>j</sub> = ‖w<sub>j</sub>‖·max(0, distance).</td>
+        </tr>
+        <tr>
+          <td>Output</td>
+          <td>z₂ = Σ<sub>j</sub> W₂[j]·a<sub>j</sub> + b₂, &nbsp; ŷ = σ(z₂)</td>
+          <td>Four ramps stacked with heights W₂[j] (positive lifts towards class 1, negative pushes down) plus an
+            offset b₂: a piecewise-planar surface. The decision boundary is the contour z₂ = 0; it can only bend on the
+            lines L<sub>j</sub>.</td>
+        </tr>
+        <tr>
+          <td>Sensitivity</td>
+          <td>∂ŷ/∂W₁[i,j] = ŷ(1−ŷ)·W₂[j]·1[z<sub>j</sub>&gt;0]·x<sub>i</sub><br>∂ŷ/∂b₁[j] =
+            ŷ(1−ŷ)·W₂[j]·1[z<sub>j</sub>&gt;0]<br>∂ŷ/∂W₂[j] = ŷ(1−ŷ)·a<sub>j</sub> &nbsp;·&nbsp; ∂ŷ/∂b₂ = ŷ(1−ŷ)</td>
+          <td>b₁[j] <b>slides</b> L<sub>j</sub>; W₁[·,j] <b>rotates/tilts</b> it; W₂[j] changes the <b>height</b> of
+            ramp j; b₂ <b>lifts</b> everything. A unit that is off at the probe has zero influence through W₁ and b₁; a
+            saturated sigmoid (ŷ ≈ 0 or 1) silences every parameter.</td>
+        </tr>
+      </table>
+      <p class="sm" style="margin:8px 0 0">These are exactly the backward-pass quantities of Section 5 (dW₁, db₁, dW₂,
+        db₂), evaluated for the output at one point instead of the loss over a batch.</p>
+    </div>
+
+    <div class="card" style="--c:#7a4fd0">
+      <div class="chips"><b>Load:</b><button id="pH">Hand-built |x₁−x₂|</button><button id="pL">Linear collapse (all
+          units on)</button><button id="pR">Random init</button>
+        <span style="margin-left:auto"><button id="gT">▶ Train</button></span>
+      </div>
+      <div class="g2">
+        <div>
+          <div class="chips"><button id="gF" class="on">Forward: activations</button><button id="gB">Backward:
+              sensitivity</button></div>
+          <svg id="gn" viewBox="0 0 520 415" font-family="system-ui" text-anchor="middle"></svg>
+          <p class="sm" style="margin:2px 0 0">Click an edge or a node. Forward: edge width = |weight|, node opacity =
+            activation aⱼ. Backward: edge width = |∂ŷ/∂θ|; grey dashed = no influence.</p>
+        </div>
+        <div>
+          <div class="chips"><b>Map:</b><button id="mY" class="on">ŷ</button><button id="mR">Regions</button><button
+              id="mU">Unit aⱼ</button><button id="mS">∂ŷ/∂θ</button><button id="gD" class="on">Distances</button></div>
+          <canvas id="gc"></canvas>
+          <p id="gcap" class="sm" style="margin:6px 0 0"></p>
+        </div>
+      </div>
+      <p id="gnote" style="margin:10px 0 0;font-size:15px"></p>
+    </div>
+
+    <div class="card" style="--c:#7a4fd0">
+      <div class="chips"><b>Unit:</b><span id="guc" class="chips" style="margin:0"></span><span
+          style="margin-left:auto"><b>Sensitivity of</b> <button id="sY" class="on">ŷ</button><button id="sZ">logit
+            z₂</button></span></div>
+      <div class="row" id="gu" style="margin-top:2px"></div>
+      <p id="ghint" class="sm" style="margin:8px 0 0"></p>
+      <div class="row" style="margin-top:8px"><label class="s" style="flex:1 1 260px">λ (L1 on A₁) for training: <b
+            id="glv">0.005</b><input id="gl" type="range" min="0" max="0.05" step="0.001" value="0.005"></label>
+        <span id="gst" class="sm" style="flex:2 1 300px"></span>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card" style="--c:#7a4fd0;margin:0"><b>Sweep of the focused parameter</b><canvas id="gs"
+          style="cursor:default;margin-top:6px"></canvas>
+        <p class="sm" style="margin:6px 0 0">Output at the probe as one parameter varies, all others fixed. Dot =
+          current value, line = tangent (the sensitivity). Kinks are ReLU switching.</p>
+      </div>
+      <div class="card" style="--c:#7a4fd0;margin:0"><b>Sensitivity of all 17 parameters at the probe</b><svg id="gb"
+          viewBox="0 0 520 135" font-family="system-ui" style="width:100%;display:block;margin-top:6px"></svg>
+        <p class="sm" style="margin:6px 0 0">Click a bar to focus that parameter. Shaded column = parameters of the
+          selected unit.</p>
+      </div>
+    </div>
+
+    <div class="card" style="--c:#7a4fd0"><b>Try this</b>
+      <p style="margin:4px 0 0;font-size:15px">① Load <i>Hand-built</i>, drag the probe across the boundary and watch
+        ŷ(1−ŷ): influence peaks on the boundary and fades deep inside a class. ② Select <i>b₁[1]</i> and the ∂ŷ/∂θ map:
+        the parameter only matters in the half-plane where h₁ is on. ③ Units 3 and 4 are active but W₂ = 0, so their W₁
+        and b₁ have zero influence. ④ Load <i>Linear collapse</i>: no unit ever switches off, the Regions map has one
+        colour and the boundary is a straight line. ⑤ Press <i>Train</i> and watch the lines move; raise λ and see more
+        units go off.</p>
+    </div>
+  </section>
+
+  <section id="s8" style="--c:var(--g)">
+    <span class="n" style="background:var(--g)">9 · THE EVIDENCE</span>
+    <h2>Results from the experiment</h2>
+    <p class="lead">All figures and numbers come from the accompanying notebook (<code>notebooks/xor_WhyNonLinearity_MLP.ipynb</code>). Click any figure to enlarge it.</p>
+    <div class="card" style="--c:var(--g)">Setup: seed = 67 · 4 Gaussian clusters, σ = 0.35, 100 points each · 75 % train (300) / 25 % test (100), split made once · same initialization (<code>INIT_SEED = 0</code>) for λ = 0 and λ = 0.005 · full-batch gradient descent, lr = 0.5, 5000 epochs · logistic regression as baseline.</div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.1 Data and the limit of a straight line</h3>
+    <div class="figs c2">
+      <figure class="fig"><img src="figures/dataset.png" alt="The XOR data" loading="lazy"><figcaption><b>The XOR data.</b> Circles are training points, crosses are test points.</figcaption></figure>
+      <div class="card" style="--c:var(--g);margin:0"><b>Best possible straight line</b>
+        <p style="margin:6px 0 0">An exhaustive search over 361 angles × 241 offsets finds that <b>no line exceeds 75.7 % training accuracy</b> (the theoretical ceiling is 75 %: one cluster is always on the wrong side). Both class means sit almost at the origin, (−0.077, −0.075) and (0.033, 0.014), so there is nothing for a linear boundary to grab.</p>
+        <p style="margin:8px 0 0"><b>Hand-built 2-ReLU solution</b> ReLU(s) + ReLU(−s) = |x₁+x₂|, then a logit 3 − 3h: <b>96.0 % train / 95.0 % test</b> with no training at all.</p></div>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.2 Training curves</h3>
+    <div class="figs c2">
+      <figure class="fig"><img src="figures/loss_bce.png" alt="Training BCE" loading="lazy"><figcaption><b>Training BCE.</b> Logistic regression is stuck at ≈ 0.69 = ln 2 (a coin flip); both MLPs fall by orders of magnitude.</figcaption></figure>
+      <figure class="fig"><img src="figures/loss_total.png" alt="Total objective and R term" loading="lazy"><figcaption><b>Total objective and R term.</b> The L1 term R settles at 0.0152, which is why L_total (0.0195) stays above the unregularized BCE (0.0043).</figcaption></figure>
+    </div>
+    <div class="figs c2">
+      <figure class="fig"><img src="figures/sparsity.png" alt="Fraction of hidden activations equal to zero" loading="lazy"><figcaption><b>Fraction of hidden activations equal to zero.</b> λ = 0.005 ends with more exact zeros (62.0 % vs 53.8 %).</figcaption></figure><div class="card" style="--c:var(--g);margin:0"><b>Reading the sparsity curve</b><p style="margin:6px 0 0">ReLU already zeroes about half of the hidden activations by itself (53.8 % at λ = 0). The L1 term pushes active pre-activations down, so more samples fall on the off side of each hidden line: 62.0 % at λ = 0.005, with the mean |A₁| dropping from 1.66 to 0.76.</p></div>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.3 Probability maps and decision boundaries</h3>
+    <div class="figs c2">
+      <figure class="fig"><img src="figures/boundary_logreg.png" alt="Logistic regression" loading="lazy"><figcaption><b>Logistic regression.</b> One straight line, 65.7 % train and 54.0 % test: it cannot separate the diagonals.</figcaption></figure>
+      <figure class="fig"><img src="figures/boundary_lambda0.png" alt="MLP, λ = 0" loading="lazy"><figcaption><b>MLP, λ = 0.</b> A piecewise-linear boundary that wraps the two blue clusters: 100 % train / 98 % test.</figcaption></figure>
+      <figure class="fig"><img src="figures/boundary_lambda005.png" alt="MLP, λ = 0.005" loading="lazy"><figcaption><b>MLP, λ = 0.005.</b> Same accuracy, 100 % / 98 %, with a slightly different set of bends. Black curve: ŷ = 0.5.</figcaption></figure><div class="card" style="--c:var(--g);margin:0"><b>Side by side</b><table style="margin-top:6px"><tr><th></th><th>Test acc.</th><th>Test BCE</th></tr><tr><td>Logistic reg.</td><td class="bad">0.54</td><td>0.7067</td></tr><tr><td>MLP λ = 0</td><td>0.98</td><td>0.0332</td></tr><tr><td>MLP λ = 0.005</td><td>0.98</td><td>0.0565</td></tr></table><p class="sm" style="margin:8px 0 0">Crosses mark the 100 test points; the few crossing the boundary are the 2 test errors of each MLP.</p></div>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.4 Hidden neurons are lines</h3>
+    <div class="figs c1">
+      <figure class="fig"><img src="figures/hidden_lines_lambda0.png" alt="Hidden neurons, λ = 0" loading="lazy"><figcaption><b>Hidden neurons, λ = 0.</b> Each panel shows the activation A₁,ⱼ (colour) and its line Z₁,ⱼ = 0 (white). Fraction of samples on the active side: 0.52, 0.47, 0.47, 0.39.</figcaption></figure>
+      <figure class="fig"><img src="figures/hidden_lines_lambda005.png" alt="Hidden neurons, λ = 0.005" loading="lazy"><figcaption><b>Hidden neurons, λ = 0.005.</b> Units 2 and 4 now fire for only 30 % of the samples (fractions 0.51, 0.30, 0.41, 0.30), so their activation regions are tighter.</figcaption></figure>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.5 Linear regions</h3>
+    <div class="figs c2">
+      <figure class="fig"><img src="figures/regions_lambda0.png" alt="Regions, λ = 0" loading="lazy"><figcaption><b>Regions, λ = 0.</b> 11 distinct activation patterns in the plotted window.</figcaption></figure>
+      <figure class="fig"><img src="figures/regions_lambda005.png" alt="Regions, λ = 0.005" loading="lazy"><figcaption><b>Regions, λ = 0.005.</b> 10 patterns. Inside every region the logit is exactly affine (max error 0 over 1000 random points).</figcaption></figure>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.6 Metrics</h3>
+    <div class="card" style="--c:var(--g)">
+      <table>
+        <tr><th></th><th>Logistic reg.</th><th>MLP λ = 0</th><th>MLP λ = 0.005</th></tr>
+        <tr><td>Train accuracy</td><td>0.657</td><td>1.000</td><td>1.000</td></tr>
+        <tr><td>Test accuracy</td><td class="bad">0.540</td><td>0.980</td><td>0.980</td></tr>
+        <tr><td>Train BCE (unregularized)</td><td>0.6908</td><td>0.0011</td><td>0.0043</td></tr>
+        <tr><td>Test BCE (unregularized)</td><td>0.7067</td><td>0.0332</td><td>0.0565</td></tr>
+        <tr><td>R term (train)</td><td>n/a</td><td>0</td><td>0.0152</td></tr>
+        <tr><td>Total train objective</td><td>0.6908</td><td>0.0011</td><td>0.0195</td></tr>
+        <tr><td>Fraction of A₁ = 0 (train / test)</td><td>n/a</td><td>0.538 / 0.525</td><td class="hl">0.620 / 0.593</td></tr>
+        <tr><td>Mean |A₁| (train / test)</td><td>n/a</td><td>1.661 / 1.671</td><td class="hl">0.759 / 0.767</td></tr>
+        <tr><td>Gradient check, rel. error W₁ / W₂</td><td>n/a</td><td>6.7·10⁻¹¹ / 5.9·10⁻¹⁰ †</td><td>6.9·10⁻¹⁰ / 1.0·10⁻⁹</td></tr>
+      </table>
+      <p class="sm" style="margin:8px 0 0">* The check was run at the initial point (λ = 0.005: 1.1·10⁻¹⁰ / 9.3·10⁻¹¹; λ = 5: 1.5·10⁻¹⁰ / 4.1·10⁻¹⁰) and on the trained λ = 0.005 model (printout below). † Trained λ = 0 model: same <code>gradient_check</code> function, run by <code>scripts/make_figures.py</code> (it is not printed in the notebook); values at this level vary slightly between machines. Differences between analytic and numerical gradients are at the level of the finite-difference noise, and no check straddled a ReLU kink.</p>
+<pre class="out">--- trained model (lam=0.005) | neuron j=0, fraction active=0.51
+    min|Z1[:,j]| = 2.03e-02 vs slope 2.1e-06 -> no kink crossed: True
+    W1[0, 0]: analytic=-0.0002090896 | numerical=-0.0002090896 | relative error=6.90e-10
+    W2[0, 0]: analytic=+0.0008345272 | numerical=+0.0008345272 | relative error=1.03e-09</pre>
+    </div>
+
+    <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.7 How strong should λ be?</h3>
+    <div class="card" style="--c:var(--g)">
+      <table>
+        <tr><th>λ</th><th>Test BCE</th><th>Test acc.</th><th>L_total (train)</th><th>Fraction A₁ = 0</th><th>Mean |A₁|</th></tr>
+        <tr><td>0</td><td>0.0332</td><td>0.98</td><td>0.0011</td><td>0.538</td><td>1.661</td></tr>
+        <tr class="hl"><td>0.005</td><td>0.0565</td><td>0.98</td><td>0.0195</td><td>0.620</td><td>0.759</td></tr>
+        <tr><td>0.05</td><td>0.0813</td><td>0.97</td><td>0.0695</td><td>0.720</td><td>0.231</td></tr>
+        <tr><td>0.5</td><td>0.5202</td><td class="bad">0.72</td><td>0.5810</td><td>0.946</td><td>0.015</td></tr>
+        <tr><td>2.0</td><td>0.6938</td><td class="bad">0.48</td><td>0.6931</td><td>1.000</td><td>0.000</td></tr>
+        <tr><td>5.0</td><td>0.6938</td><td class="bad">0.48</td><td>0.6931</td><td>1.000</td><td>0.000</td></tr>
+      </table>
+      <p class="sm" style="margin:8px 0 0">Same data and initialization for every row. For λ ≥ 2 every hidden unit is off and the network collapses to a constant output (BCE = ln 2 ≈ 0.693).</p>
+    </div>
+
+    <div class="card" style="--c:var(--g)"><b>Interpretation</b>
+      <p style="margin:6px 0 0">Logistic regression stays at 54–66 % because no single line separates the diagonals; its loss never leaves ln 2. The MLP bends the boundary with its hidden lines and reaches 100 % train / 98 % test. With λ = 0.005 the fraction of zero activations rises from 54 % to 62 % and the mean activation magnitude drops by more than half (1.66 → 0.76): units 2 and 4 fire for 30 % of the samples instead of 47 % and 39 %, so their ramps carve tighter regions and the plane splits into one fewer activation pattern (10 instead of 11). Accuracy does not change (98 % test in both) and the unregularized test BCE is a little worse (0.033 → 0.057): at this strength L1 buys sparsity, not accuracy. The sweep confirms that sparser is not better by itself: accuracy slips at λ = 0.05 (97 %), falls to 72 % at λ = 0.5, and the network dies at λ ≥ 2.</p>
+    </div>
+  </section>
+
+  <section id="refs" style="--c:var(--b)">
+    <span class="n" style="background:var(--b)">10 · REFERENCES</span>
+    <h2>Foundational references</h2>
+    <p class="lead">Entries marked <span class="star">XOR</span> address the XOR limitation of the perceptron directly.</p>
+    <ol class="refs">
+      <li>Minsky, M., Papert, S. <i>Perceptrons: An Introduction to Computational Geometry.</i> MIT Press, 1969 (expanded edition, 1988). <span class="star">XOR</span> The classic analysis of what single-layer perceptrons cannot compute, including parity/XOR.</li>
+      <li>Rosenblatt, F. The perceptron: a probabilistic model for information storage and organization in the brain. <i>Psychological Review</i>, 65(6), 386–408, 1958. doi:10.1037/h0042519</li>
+      <li>Rumelhart, D. E., Hinton, G. E., Williams, R. J. Learning representations by back-propagating errors. <i>Nature</i>, 323, 533–536, 1986. doi:10.1038/323533a0 Backpropagation as the way to train hidden units.</li>
+      <li>Rumelhart, D. E., Hinton, G. E., Williams, R. J. Learning internal representations by error propagation. In Rumelhart &amp; McClelland (eds.), <i>Parallel Distributed Processing</i>, vol. 1, ch. 8. MIT Press, 1986. <span class="star">XOR</span> Worked XOR example.</li>
+      <li>Goodfellow, I., Bengio, Y., Courville, A. <i>Deep Learning.</i> MIT Press, 2016, §6.1 “Example: Learning XOR”. <a href="https://www.deeplearningbook.org/">deeplearningbook.org</a> <span class="star">XOR</span> The ReLU solution used as the reference example in this work.</li>
+      <li>Olazaran, M. A sociological study of the official history of the perceptrons controversy. <i>Social Studies of Science</i>, 26(3), 611–659, 1996. History of the Minsky–Papert debate.</li>
+      <li>Cybenko, G. Approximation by superpositions of a sigmoidal function. <i>Mathematics of Control, Signals and Systems</i>, 2, 303–314, 1989.</li>
+      <li>Hornik, K., Stinchcombe, M., White, H. Multilayer feedforward networks are universal approximators. <i>Neural Networks</i>, 2(5), 359–366, 1989.</li>
+      <li>Nair, V., Hinton, G. E. Rectified linear units improve restricted Boltzmann machines. <i>ICML</i>, 2010.</li>
+      <li>Glorot, X., Bordes, A., Bengio, Y. Deep sparse rectifier neural networks. <i>AISTATS</i>, 2011. Sparse activations and ReLU, the motivation for the L1 term.</li>
+      <li>Montúfar, G., Pascanu, R., Cho, K., Bengio, Y. On the number of linear regions of deep neural networks. <i>NeurIPS</i>, 2014. arXiv:1402.1869. Counting the linear regions of Section 9.5.</li>
+      <li>Pinto, R. C., Tavares, A. R. PReLU: Yet another single-layer solution to the XOR problem. 2024. <a href="https://arxiv.org/abs/2409.10821">arXiv:2409.10821</a> <span class="star">XOR</span> A recent revisit of XOR with a single neuron.</li>
+    </ol>
+  </section>
+  <footer>Pedro de Sousa Sebastião · CPGEI · UTFPR<br>© 2026 · Licensed under <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a> · view and simulate freely; no modifications</footer>
+  <div id="lb2"><img alt=""></div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    /* ---- XOR gate ---- */
+    let A = 0, B = 0;
+    function gate() {
+      const nA = 1 - A, nB = 1 - B, t1 = A & nB, t2 = nA & B, o = t1 | t2, c = v => v ? '#1f9d6b' : '#b9c2d6';
+      const set = (id, v) => $(id).setAttribute('stroke', c(v));
+      set('wA1', A); set('wA2', A); set('wB1', B); set('wB2', B); set('wnB', nB); set('wnA', nA); set('wt1', t1); set('wt2', t2); set('wO', o);
+      $('oc').setAttribute('fill', o ? '#d9f5e8' : '#fff'); $('ot').textContent = o; $('bA').textContent = A; $('bB').textContent = B;
+      $('bA').className = A ? 'on' : ''; $('bB').className = B ? 'on' : '';
+      $('gtxt').innerHTML = `A·B̄ = ${t1}, Ā·B = ${t2} → <b>${o}</b>`;
+      ['00', '01', '10', '11'].forEach(k => $('r' + k).style.background = (k == '' + A + B) ? '#dff3ff' : '')
+    }
+    $('bA').onclick = () => { A ^= 1; gate() }; $('bB').onclick = () => { B ^= 1; gate() }; gate();
+    /* ---- clusters ---- */
+    const cv = $('cv'), ctx = cv.getContext('2d'), C0 = [[1, 1], [-1, -1], [-1, 1], [1, -1]], cls = [0, 0, 1, 1];
+    const KC = ['#e0662b', '#e0a526', '#2b7fd9', '#8a4fd0'], XC = ['#e0662b', '#2b7fd9'], R = 2.6;
+    let C = C0.map(c => c.slice()), Z = [], mode = 'c', showL = false, drag = -1, W = 0;
+    function resample() { const n = +$('n').value; Z = C.map(() => Array.from({ length: n }, () => { const u = Math.random() || 1e-9, v = Math.random(), r = Math.sqrt(-2 * Math.log(u)); return [r * Math.cos(6.2832 * v), r * Math.sin(6.2832 * v)] })); draw() }
+    const pts = () => { const s = +$('s').value; return Z.flatMap((a, k) => a.map(z => ({ x: C[k][0] + s * z[0], y: C[k][1] + s * z[1], k }))) };
+    const px = x => (x + R) / (2 * R) * W, py = y => (R - y) / (2 * R) * W;
+    function size() { const d = devicePixelRatio || 1; W = Math.min(cv.parentElement.clientWidth - 32, 620); cv.width = cv.height = W * d; cv.style.height = W + 'px'; cv.style.maxWidth = W + 'px'; ctx.setTransform(d, 0, 0, d, 0, 0); draw() }
+    const L = () => [+$('w1').value, +$('w2').value, +$('b').value];
+    const acc = (l, P) => P.filter(p => ((l[0] * p.x + l[1] * p.y + l[2] >= 0 ? 1 : 0) === cls[p.k])).length / P.length;
+    function draw() {
+      ctx.clearRect(0, 0, W, W); ctx.lineWidth = 1; ctx.strokeStyle = '#ebeef5';
+      for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(px(i), 0); ctx.lineTo(px(i), W); ctx.moveTo(0, py(i)); ctx.lineTo(W, py(i)); ctx.stroke() }
+      ctx.strokeStyle = '#8a93a6'; ctx.beginPath(); ctx.moveTo(px(0), 0); ctx.lineTo(px(0), W); ctx.moveTo(0, py(0)); ctx.lineTo(W, py(0)); ctx.stroke();
+      ctx.fillStyle = '#8a93a6'; ctx.font = '12px system-ui'; ctx.fillText('x₁', W - 18, py(0) - 6); ctx.fillText('x₂', px(0) + 6, 14);
+      const P = pts(), s = +$('s').value, col = k => mode === 'c' ? KC[k] : XC[cls[k]];
+      ctx.globalAlpha = .7; for (const p of P) { ctx.fillStyle = col(p.k); ctx.beginPath(); ctx.arc(px(p.x), py(p.y), 3.2, 0, 6.283); ctx.fill() } ctx.globalAlpha = 1;
+      C.forEach((c, k) => { ctx.strokeStyle = col(k); ctx.lineWidth = 1.5; for (const m of [1, 2]) { ctx.setLineDash(m == 2 ? [4, 4] : []); ctx.beginPath(); ctx.arc(px(c[0]), py(c[1]), m * s / (2 * R) * W, 0, 6.283); ctx.stroke() } ctx.setLineDash([]); ctx.fillStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(px(c[0]), py(c[1]), 7, 0, 6.283); ctx.fill(); ctx.stroke() });
+      if (showL) {
+        const l = L(); ctx.strokeStyle = '#1d2433'; ctx.lineWidth = 2.5; ctx.beginPath();
+        if (Math.abs(l[1]) > .02) { const f = x => (-l[2] - l[0] * x) / l[1]; ctx.moveTo(px(-R), py(f(-R))); ctx.lineTo(px(R), py(f(R))) }
+        else if (Math.abs(l[0]) > .02) { const x = -l[2] / l[0]; ctx.moveTo(px(x), 0); ctx.lineTo(px(x), W) }
+        ctx.stroke(); $('acc').textContent = Math.round(acc(l, P) * 100) + '%'
+      }
+      $('lg').innerHTML = mode === 'c' ? 'Each colour is one cluster. Circles: 1σ (solid) and 2σ (dashed). Drag the centres.' : '<span class="dot" style="background:#e0662b"></span>class 0 (x₁x₂ &gt; 0) &nbsp; <span class="dot" style="background:#2b7fd9"></span>class 1 (x₁x₂ &lt; 0)'
+    }
+    function setM(m) { mode = m; $('mC').className = m == 'c' ? 'on' : ''; $('mX').className = m == 'x' ? 'on' : ''; draw() }
+    $('mC').onclick = () => setM('c'); $('mX').onclick = () => setM('x');
+    $('mL').onclick = () => { showL = !showL; $('mL').className = showL ? 'on' : ''; $('lb').style.display = showL ? 'block' : 'none'; draw() };
+    $('s').oninput = () => { $('sv').textContent = $('s').value; draw() }; $('n').oninput = () => { $('nv').textContent = $('n').value; resample() };
+    ['w1', 'w2', 'b'].forEach(i => $(i).oninput = () => { $(i + 'v').textContent = (+$(i).value).toFixed(2); draw() });
+    $('rs').onclick = resample; $('rc').onclick = () => { C = C0.map(c => c.slice()); draw() };
+    $('best').onclick = () => {
+      const P = pts(); let bw = [1, 0, 0], ba = -1; for (let t = 0; t < 360; t += 4)for (let b = -2; b <= 2; b += .1) { const w = [Math.cos(t * Math.PI / 180), Math.sin(t * Math.PI / 180), b], a = acc(w, P); if (a > ba) { ba = a; bw = w } }
+      ['w1', 'w2', 'b'].forEach((i, j) => { $(i).value = bw[j].toFixed(2); $(i).oninput() })
+    };
+    const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * 2 * R - R, R - (e.clientY - r.top) / r.height * 2 * R] };
+    cv.onpointerdown = e => { const [x, y] = pos(e); drag = C.findIndex(c => Math.hypot(c[0] - x, c[1] - y) < .35); if (drag >= 0) cv.setPointerCapture(e.pointerId) };
+    cv.onpointermove = e => { if (drag < 0) return; const [x, y] = pos(e); C[drag] = [Math.max(-R, Math.min(R, x)), Math.max(-R, Math.min(R, y))]; draw() };
+    cv.onpointerup = () => drag = -1; addEventListener('resize', size); resample(); size();
+    /* ---- figure lightbox (view only) ---- */
+    const lb = $('lb2'), lbi = lb.querySelector('img');
+    document.querySelectorAll('.fig img').forEach(i => i.onclick = () => { lbi.src = i.src; lb.style.display = 'flex' });
+    lb.onclick = () => lb.style.display = 'none'; addEventListener('keydown', e => { if (e.key === 'Escape') lb.style.display = 'none' });
+    </script>
+  <script>
+    /* ---- live network: geometry, activation, sensitivity ---- */
+    (() => {
+      const $ = id => document.getElementById(id), NS = 'http://www.w3.org/2000/svg';
+      const LAB = []; for (let i = 1; i <= 2; i++)for (let j = 1; j <= 4; j++)LAB.push(`W₁[${i},${j}]`);
+      for (let j = 1; j <= 4; j++)LAB.push(`b₁[${j}]`); for (let j = 1; j <= 4; j++)LAB.push(`W₂[${j}]`); LAB.push('b₂');
+      const UC = ['#7a4fd0', '#0b9f9f', '#b8860b', '#5c3d2e'], POS = '#2f9e44', NEG = '#e03131';
+      const rgb = h => [1, 3, 5].map(i => parseInt(h.substr(i, 2), 16)), UR = UC.map(rgb), PC = rgb(POS), NC = rgb(NEG), OR = [224, 102, 43], BL = [43, 127, 217], WH = [255, 255, 255];
+      const mix = (a, b, t) => { t = Math.max(0, Math.min(1, t)); return a.map((v, i) => v + (b[i] - v) * t) };
+      const hsl = (h, s, l) => { const a = s * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)) }; return [f(0), f(8), f(4)].map(v => v * 255) };
+      const PAL = Array.from({ length: 16 }, (_, c) => c ? hsl((c * 137.5) % 360, .55, .84) : [236, 239, 245]);
+      const unitOf = k => k < 8 ? k & 3 : k < 12 ? k - 8 : k < 16 ? k - 12 : -1;
+      const HB = [1, -1, 1, -1, -1, 1, 1, -1, 0, 0, .5, .5, 3, 3, 0, 0, -3], LIN = [1, 1, .5, -1, 1, -1, .5, 1, 6, 6, 6, 6, .8, -.5, .6, .4, -5];
+      let th = HB.slice(), sel = 0, unit = 0, px0 = .9, py0 = -.3, view = 'f', mapm = 'y', sens = 'y', dist = true, lam = .005, training = false, seedNext = 67, seedUsed = 'hand-built', drag = false;
+      const R = 2.5, N = 160;
+      /* seeded RNG + data */
+      const rng = s => () => { s |= 0; s = s + 0x6D2B79F5 | 0; let t = Math.imul(s ^ s >>> 15, 1 | s); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 };
+      const gauss = r => { const u = r() || 1e-9, v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.2832 * v) };
+      const DR = rng(11), D = [];[[1, 1, 0], [-1, -1, 0], [-1, 1, 1], [1, -1, 1]].forEach(([a, b, c]) => { for (let k = 0; k < 40; k++)D.push([a + .35 * gauss(DR), b + .35 * gauss(DR), c]) });
+      function initRand(seed) { const r = rng(seed); th = th.map((_, k) => k < 8 ? gauss(r) * .8 : k < 12 ? (r() - .5) * .6 : k < 16 ? gauss(r) * .5 : 0) }
+      /* model */
+      function fwd(x1, x2, T = th) { const z = [], a = []; let z2 = T[16]; for (let j = 0; j < 4; j++) { const zj = T[j] * x1 + T[4 + j] * x2 + T[8 + j], aj = zj > 0 ? zj : 0; z.push(zj); a.push(aj); z2 += T[12 + j] * aj } return { z, a, z2, y: 1 / (1 + Math.exp(-z2)) } }
+      function gk(k, x1, x2, f) { const s = sens === 'y' ? f.y * (1 - f.y) : 1; if (k === 16) return s; if (k >= 12) return s * f.a[k - 12]; const j = unitOf(k), on = f.z[j] > 0 ? 1 : 0, v = th[12 + j]; return k < 8 ? s * v * on * ((k >> 2) ? x2 : x1) : s * v * on }
+      function step(lr) {
+        const m = D.length, g = new Array(17).fill(0);
+        for (const [x1, x2, t] of D) { const f = fwd(x1, x2), d2 = (f.y - t) / m; for (let j = 0; j < 4; j++) { const da = d2 * th[12 + j] + (f.a[j] > 0 ? lam / m : 0), dz = f.z[j] > 0 ? da : 0; g[j] += dz * x1; g[4 + j] += dz * x2; g[8 + j] += dz; g[12 + j] += d2 * f.a[j] } g[16] += d2 }
+        for (let k = 0; k < 17; k++)th[k] -= lr * g[k]
+      }
+      function stats() {
+        let L = 0, l1 = 0, ac = 0, z0 = 0; const m = D.length; for (const [x1, x2, t] of D) { const f = fwd(x1, x2); L -= (t ? Math.log(f.y + 1e-12) : Math.log(1 - f.y + 1e-12)) / m; ac += (f.y > .5 ? 1 : 0) === t ? 1 : 0; f.a.forEach(a => { l1 += a * lam / m; if (a === 0) z0++ }) }
+        return `init: ${seedUsed} · BCE ${L.toFixed(3)} · L1 term ${l1.toFixed(4)} · accuracy ${(ac / m * 100).toFixed(0)}% · A₁ = 0: ${(z0 / (4 * m) * 100).toFixed(0)}%`
+      }
+      /* ---- network SVG ---- */
+      const svg = $('gn'), mk = (t, a, p = svg) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); p.appendChild(e); return e };
+      const IN = [[50, 155], [50, 245]], HD = [0, 1, 2, 3].map(j => [245, 65 + j * 90]), OUT = [440, 200], B1 = [145, 24], B2 = [345, 24];
+      const ends = k => k < 8 ? [IN[k >> 2], HD[k & 3]] : k < 12 ? [B1, HD[k - 8]] : k < 16 ? [HD[k - 12], OUT] : [B2, OUT];
+      const E = []; for (let k = 0; k < 17; k++) {
+        const [[a, b], [c, d]] = ends(k), P = { x1: a, y1: b, x2: c, y2: d, 'stroke-linecap': 'round' };
+        const halo = mk('line', { ...P, stroke: '#ffd43b', 'stroke-width': 0, opacity: 0 }), ln = mk('line', { ...P, stroke: '#999' }), hit = mk('line', { ...P, stroke: 'transparent', 'stroke-width': 12, style: 'cursor:pointer' });
+        hit.onclick = () => { sel = k; if (unitOf(k) >= 0) unit = unitOf(k); render() }; E.push({ halo, ln })
+      }
+      const elab = mk('text', { 'font-size': 12, 'font-weight': 700, 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': 4, fill: '#1d2433' });
+      [[B1, 'b₁'], [B2, 'b₂']].forEach(([p, t]) => { mk('circle', { cx: p[0], cy: p[1], r: 17, fill: '#c92a2a' }); mk('text', { x: p[0], y: p[1] + 5, fill: '#fff', 'font-size': 14, 'font-weight': 700 }).textContent = t });
+      const ic = [], it = []; IN.forEach((p, i) => { ic.push(mk('circle', { cx: p[0], cy: p[1], r: 24, fill: '#e8edf7', stroke: '#1d2433', 'stroke-width': 2 })); mk('text', { x: p[0], y: p[1] - 3, 'font-size': 13, 'font-weight': 700 }).textContent = 'x' + '₁₂'[i]; it.push(mk('text', { x: p[0], y: p[1] + 13, 'font-size': 12, fill: '#5d6578' })) });
+      const hc = [], ht = [], hv = []; HD.forEach((p, j) => {
+        const g = mk('g', { style: 'cursor:pointer' }); g.onclick = () => { unit = j; if (unitOf(sel) !== j) sel = 8 + j; render() };
+        hc.push(mk('circle', { cx: p[0], cy: p[1], r: 26, fill: UC[j], stroke: UC[j] }, g)); ht.push(mk('text', { x: p[0], y: p[1] - 3, 'font-size': 13, 'font-weight': 700 }, g)); hv.push(mk('text', { x: p[0], y: p[1] + 13, 'font-size': 12 }, g))
+      });
+      const oc = mk('circle', { cx: OUT[0], cy: OUT[1], r: 28, stroke: '#1d2433', 'stroke-width': 2, style: 'cursor:pointer' }); oc.onclick = () => { sel = 16; render() };
+      const ot = mk('text', { x: OUT[0], y: OUT[1] - 2, 'font-size': 12, 'font-weight': 700, 'pointer-events': 'none' }), ov = mk('text', { x: OUT[0], y: OUT[1] + 14, 'font-size': 12, 'pointer-events': 'none' });
+      [[50, 'Input'], [245, 'Hidden · ReLU'], [440, 'Output · σ']].forEach(([x, t]) => mk('text', { x, y: 384, 'font-size': 12, fill: '#5d6578' }).textContent = t);
+      const arr = mk('path', { d: 'M110,402H405', stroke: '#e0662b', 'stroke-width': 4, fill: 'none' }), arh = mk('polygon', { fill: '#e0662b' }), arT = mk('text', { x: 258, y: 396, 'font-size': 12, 'font-weight': 700, fill: '#e0662b', 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': 3 });
+      function drawNet(f, g) {
+        const fw = view === 'f', gm = Math.max(1e-9, ...g.map(Math.abs));
+        for (let k = 0; k < 17; k++) {
+          const e = E[k], u = unitOf(k); let w, c, o = 1, d = '';
+          if (fw) { w = .8 + 3.4 * Math.min(1, Math.abs(th[k]) / 2.5); c = th[k] >= 0 ? POS : NEG; if (k >= 12 && k < 16 && f.z[u] <= 0) o = .18 }
+          else { w = .8 + 6 * Math.abs(g[k]) / gm; c = g[k] > 0 ? POS : g[k] < 0 ? NEG : '#adb5bd'; o = g[k] === 0 ? .6 : .95; if (g[k] === 0) d = '3 4' }
+          e.ln.setAttribute('stroke', c); e.ln.setAttribute('stroke-width', w); e.ln.setAttribute('opacity', o); e.ln.setAttribute('stroke-dasharray', d);
+          e.halo.setAttribute('stroke-width', w + 8); e.halo.setAttribute('opacity', k === sel ? .8 : 0)
+        }
+        const [[a, b], [c, d]] = ends(sel); elab.setAttribute('x', (a + c) / 2 + (sel < 8 ? 0 : 0)); elab.setAttribute('y', (b + d) / 2 - 8);
+        elab.textContent = fw ? `${LAB[sel]} = ${th[sel].toFixed(2)}` : `∂/∂${LAB[sel]} = ${g[sel].toFixed(3)}`;
+        IN.forEach((p, i) => it[i].textContent = (i ? py0 : px0).toFixed(2));
+        for (let j = 0; j < 4; j++) {
+          const on = f.z[j] > 0; hc[j].setAttribute('fill-opacity', on ? .2 + .7 * Math.min(1, f.a[j] / 2.5) : .05); hc[j].setAttribute('stroke-width', j === unit ? 5 : 2); hc[j].setAttribute('stroke-dasharray', on ? '' : '4 3');
+          const dark = on && f.a[j] > 1.2; ht[j].textContent = 'h' + '₁₂₃₄'[j]; hv[j].textContent = on ? f.a[j].toFixed(2) : 'off'; ht[j].setAttribute('fill', dark ? '#fff' : '#1d2433'); hv[j].setAttribute('fill', dark ? '#fff' : '#5d6578')
+        }
+        oc.setAttribute('fill', `rgb(${mix(f.y > .5 ? BL : OR, WH, 1 - Math.abs(2 * f.y - 1) * .8).map(Math.round)})`); ot.textContent = 'ŷ'; ov.textContent = f.y.toFixed(3);
+        if (fw) { arh.setAttribute('points', '405,394 420,402 405,410'); arT.textContent = 'Forward propagation' } else { arh.setAttribute('points', '110,394 95,402 110,410'); arT.textContent = 'Back-propagation of ∂' + (sens === 'y' ? 'ŷ' : 'z₂') + '/∂θ' }
+      }
+      /* ---- sensitivity bars ---- */
+      const bs = $('gb'), BR = [], BX = k => 18 + k * 29;
+      for (let k = 0; k < 17; k++) {
+        const bg = mk('rect', { x: BX(k) - 3, y: 14, width: 27, height: 76, fill: 'transparent', style: 'cursor:pointer' }, bs); bg.onclick = () => { sel = k; if (unitOf(k) >= 0) unit = unitOf(k); render() };
+        const r = mk('rect', { x: BX(k), width: 21, 'pointer-events': 'none' }, bs); const t = mk('text', { x: BX(k) + 10, y: 98, 'font-size': 9.5, fill: '#5d6578', transform: `rotate(55 ${BX(k) + 10} 98)`, 'pointer-events': 'none' }, bs); t.textContent = LAB[k]; BR.push({ bg, r })
+      }
+      [[0, 'W₁'], [8, 'b₁'], [12, 'W₂'], [16, 'b₂']].forEach(([k, t]) => { mk('text', { x: BX(k) + (k === 0 ? 100 : k === 16 ? 10 : 48), y: 10, 'font-size': 11, 'font-weight': 700, fill: '#5d6578', 'text-anchor': 'middle' }, bs).textContent = t });
+      [8, 12, 16].forEach(k => mk('line', { x1: BX(k) - 4, x2: BX(k) - 4, y1: 14, y2: 90, stroke: '#cfd5e3', 'stroke-dasharray': '3 3' }, bs));
+      const bmax = mk('text', { x: 2, y: 10, 'font-size': 10, fill: '#5d6578', 'text-anchor': 'start' }, bs);
+      function drawBars(g) {
+        const gm = Math.max(1e-9, ...g.map(Math.abs)); BR.forEach(({ bg, r }, k) => {
+          const v = g[k], h = Math.max(v === 0 ? 1 : 0, Math.abs(v) / gm * 30); r.setAttribute('height', Math.max(h, 1)); r.setAttribute('y', v >= 0 ? 52 - h : 52); r.setAttribute('fill', v === 0 ? '#adb5bd' : v > 0 ? POS : NEG); r.setAttribute('stroke', k === sel ? '#1d2433' : 'none'); r.setAttribute('stroke-width', 2);
+          bg.setAttribute('fill', unitOf(k) === unit ? UC[unit] : 'transparent'); bg.setAttribute('fill-opacity', .1)
+        }); bmax.textContent = 'max |∂| = ' + gm.toFixed(3)
+      }
+      /* ---- plane map ---- */
+      const gc = $('gc'), cx = gc.getContext('2d'), gs = $('gs'), sx = gs.getContext('2d'), off = document.createElement('canvas'); off.width = off.height = N; const ox = off.getContext('2d'), img = ox.createImageData(N, N);
+      let W = 400, SW = 400, SH = 190; const X = x => (x + R) / (2 * R) * W, Y = y => (R - y) / (2 * R) * W;
+      function heat() {
+        const vals = new Float32Array(N * N), sg = new Uint8Array(N * N); let mx = 1e-9;
+        for (let r = 0; r < N; r++)for (let c = 0; c < N; c++) {
+          const x = -R + (c + .5) / N * 2 * R, y = R - (r + .5) / N * 2 * R, f = fwd(x, y), i = r * N + c; sg[i] = f.z2 > 0 ? 1 : 0;
+          const v = mapm === 'y' ? f.y : mapm === 'r' ? (f.z[0] > 0 ? 1 : 0) + (f.z[1] > 0 ? 2 : 0) + (f.z[2] > 0 ? 4 : 0) + (f.z[3] > 0 ? 8 : 0) : mapm === 'u' ? f.a[unit] : gk(sel, x, y, f); vals[i] = v; mx = Math.max(mx, Math.abs(v))
+        }
+        for (let i = 0; i < N * N; i++) {
+          const v = vals[i]; let c;
+          if (mapm === 'y') c = mix(v > .5 ? BL : OR, WH, 1 - Math.abs(2 * v - 1) * .8); else if (mapm === 'r') c = PAL[v]; else if (mapm === 'u') c = mix(WH, UR[unit], v / mx * .9); else c = v >= 0 ? mix(WH, PC, v / mx * .9) : mix(WH, NC, -v / mx * .9);
+          const c2 = i % N < N - 1 && sg[i] !== sg[i + 1] || i < N * (N - 1) && sg[i] !== sg[i + N]; if (c2) c = [29, 36, 51];
+          img.data[4 * i] = c[0]; img.data[4 * i + 1] = c[1]; img.data[4 * i + 2] = c[2]; img.data[4 * i + 3] = 255
+        }
+        ox.putImageData(img, 0, 0); cx.imageSmoothingEnabled = true; cx.drawImage(off, 0, 0, W, W); return mx
+      }
+      function drawMap(f) {
+        const mx = heat(); cx.lineWidth = 1; cx.strokeStyle = 'rgba(60,70,90,.35)'; cx.beginPath(); cx.moveTo(X(0), 0); cx.lineTo(X(0), W); cx.moveTo(0, Y(0)); cx.lineTo(W, Y(0)); cx.stroke();
+        cx.fillStyle = '#5d6578'; cx.font = '12px system-ui'; cx.textAlign = 'left'; cx.fillText('x₁', W - 18, Y(0) - 5); cx.fillText('x₂', X(0) + 5, 13);
+        for (const [x1, x2, t] of D) { cx.globalAlpha = .8; cx.fillStyle = t ? '#1b6ec2' : '#c4511a'; cx.strokeStyle = '#fff'; cx.lineWidth = .8; cx.beginPath(); cx.arc(X(x1), Y(x2), 2.8, 0, 6.283); cx.fill(); cx.stroke() } cx.globalAlpha = 1;
+        for (let j = 0; j < 4; j++) {
+          const w1 = th[j], w2 = th[4 + j], b = th[8 + j], n = Math.hypot(w1, w2); if (n < 1e-3) continue; const nx = w1 / n, ny = w2 / n, dx = -ny, dy = nx, p0 = [-b * w1 / (n * n), -b * w2 / (n * n)], on = f.z[j] > 0;
+          cx.strokeStyle = UC[j]; cx.lineWidth = j === unit ? 3.5 : 2; cx.setLineDash(on ? [] : [7, 5]); cx.beginPath(); cx.moveTo(X(p0[0] - dx * 9), Y(p0[1] - dy * 9)); cx.lineTo(X(p0[0] + dx * 9), Y(p0[1] + dy * 9)); cx.stroke(); cx.setLineDash([]);
+          const d = f.z[j] / n, fx = px0 - d * nx, fy = py0 - d * ny;
+          if (dist) {
+            cx.lineWidth = 1.5; cx.setLineDash([3, 3]); cx.globalAlpha = on ? 1 : .45; cx.beginPath(); cx.moveTo(X(px0), Y(py0)); cx.lineTo(X(fx), Y(fy)); cx.stroke(); cx.setLineDash([]);
+            cx.fillStyle = UC[j]; cx.beginPath(); cx.moveTo(X(fx + nx * .3), Y(fy + ny * .3)); cx.lineTo(X(fx + dx * .1), Y(fy + dy * .1)); cx.lineTo(X(fx - dx * .1), Y(fy - dy * .1)); cx.fill(); cx.globalAlpha = 1
+          }
+          cx.font = 'bold 12px system-ui'; cx.lineWidth = 3.5; cx.strokeStyle = '#fff'; cx.fillStyle = UC[j]; const lx = X(fx + dx * .28), ly = Y(fy + dy * .28); cx.strokeText('h' + (j + 1), lx, ly); cx.fillText('h' + (j + 1), lx, ly)
+        }
+        cx.fillStyle = '#fff'; cx.strokeStyle = '#1d2433'; cx.lineWidth = 2.5; cx.beginPath(); cx.arc(X(px0), Y(py0), 7, 0, 6.283); cx.fill(); cx.stroke(); cx.fillStyle = '#1d2433'; cx.beginPath(); cx.arc(X(px0), Y(py0), 2, 0, 6.283); cx.fill(); return mx
+      }
+      /* ---- sweep ---- */
+      function sweep(f, g) {
+        const w = SW, h = SH, T = th.slice(), lo0 = sens === 'y' ? 0 : null, pts = []; let lo = 1e9, hi = -1e9;
+        for (let t = -4; t <= 4.001; t += .1) { T[sel] = t; const q = fwd(px0, py0, T), v = sens === 'y' ? q.y : q.z2; pts.push([t, v]); lo = Math.min(lo, v); hi = Math.max(hi, v) }
+        if (sens === 'y') { lo = 0; hi = 1 } else { const p = (hi - lo) * .1 + .1; lo -= p; hi += p }
+        const tx = t => 34 + (t + 4) / 8 * (w - 46), ty = v => h - 26 - (v - lo) / (hi - lo) * (h - 40); sx.clearRect(0, 0, w, h); sx.font = '11px system-ui'; sx.fillStyle = '#5d6578'; sx.strokeStyle = '#e3e7ef'; sx.lineWidth = 1; sx.textAlign = 'center';
+        for (let t = -4; t <= 4; t += 2) { sx.beginPath(); sx.moveTo(tx(t), 8); sx.lineTo(tx(t), h - 26); sx.stroke(); sx.fillText(t, tx(t), h - 12) }
+        sx.textAlign = 'right';[lo, (lo + hi) / 2, hi].forEach(v => { sx.beginPath(); sx.moveTo(34, ty(v)); sx.lineTo(w - 12, ty(v)); sx.stroke(); sx.fillText(v.toFixed(sens === 'y' ? 1 : 1), 30, ty(v) + 4) });
+        sx.textAlign = 'center'; sx.fillText(LAB[sel], w / 2 + 10, h - 1);
+        sx.strokeStyle = unitOf(sel) >= 0 ? UC[unitOf(sel)] : '#1d2433'; sx.lineWidth = 2.5; sx.beginPath(); pts.forEach(([t, v], i) => i ? sx.lineTo(tx(t), ty(v)) : sx.moveTo(tx(t), ty(v))); sx.stroke();
+        const c = Math.max(-4, Math.min(4, th[sel])), v0 = sens === 'y' ? f.y : f.z2; sx.strokeStyle = '#1d2433'; sx.lineWidth = 1.5; sx.setLineDash([5, 4]); sx.beginPath(); sx.moveTo(tx(c - 1), ty(v0 - g[sel])); sx.lineTo(tx(c + 1), ty(v0 + g[sel])); sx.stroke(); sx.setLineDash([]);
+        sx.fillStyle = '#fff'; sx.lineWidth = 2.5; sx.beginPath(); sx.arc(tx(c), ty(v0), 5.5, 0, 6.283); sx.fill(); sx.stroke()
+      }
+      /* ---- controls / text ---- */
+      const guc = $('guc'), gu = $('gu'), CAP = { y: 'Colour = ŷ (orange → class 0, blue → class 1); dark curve = decision boundary z₂ = 0; dots = training data. Drag anywhere to move the probe; dashed segments = signed distances to each line.', r: 'Colour = which hidden units are on (one colour per activation pattern). Inside each region the network is a single affine map.' };
+      for (let j = 0; j < 4; j++) { const b = document.createElement('button'); b.id = 'u' + j; b.textContent = 'h' + '₁₂₃₄'[j]; b.style.borderColor = UC[j]; b.style.borderWidth = '2px'; b.onclick = () => { unit = j; if (unitOf(sel) !== j && sel < 16) sel = 8 + j; render() }; guc.appendChild(b) }
+      gu.innerHTML = [0, 1, 2, 3, 4].map(r => `<label class="s" style="flex:1 1 170px"><span><button class="pb" data-r="${r}"></button> = <b></b></span><input type="range" min="-4" max="4" step="0.05" data-r="${r}"></label>`).join('');
+      const rows = [...gu.children], ridx = r => r < 4 ? [unit, 4 + unit, 8 + unit, 12 + unit][r] : 16;
+      rows.forEach((lb, r) => { lb.querySelector('button').onclick = () => { sel = ridx(r); render() }; lb.querySelector('input').oninput = e => { th[ridx(r)] = +e.target.value; sel = ridx(r); render() } });
+      function hint() {
+        const k = sel, u = unitOf(k), j = u + 1, s = sens === 'y' ? 'ŷ(1−ŷ)·' : '';
+        if (k < 8) return `${LAB[k]} is a component of the normal w${j} of line L${j}: changing it rotates/tilts L${j} and steepens its ramp. Influence at the probe = ${s}W₂[${j}]·1[z${j}>0]·x${(k >> 2) + 1}; it vanishes if h${j} is off or W₂[${j}] = 0.`;
+        if (k < 12) return `b₁[${j}] slides L${j} parallel to itself (by −Δb/‖w${j}‖). Influence = ${s}W₂[${j}]·1[z${j}>0]: zero on the dead side of L${j}.`;
+        if (k < 16) return `W₂[${j}] is the height of ramp a${j}: positive pushes its half-plane towards class 1, negative towards class 0. Influence = ${s}a${j}: zero outside the half-plane where h${j} is on.`;
+        return `b₂ lifts the whole surface z₂ and shifts the decision contour. Its influence${sens === 'y' ? ' ŷ(1−ŷ)' : ' is 1'} is the same at every point of the plane${sens === 'y' ? ' and largest on the boundary (ŷ = 0.5)' : ''}.`
+      }
+      function ui(f, g, mx) {
+        ['pH', 'pL', 'pR'].forEach(i => 0); $('mY').className = mapm === 'y' ? 'on' : ''; $('mR').className = mapm === 'r' ? 'on' : ''; $('mU').className = mapm === 'u' ? 'on' : ''; $('mS').className = mapm === 's' ? 'on' : '';
+        $('gF').className = view === 'f' ? 'on' : ''; $('gB').className = view === 'b' ? 'on' : ''; $('sY').className = sens === 'y' ? 'on' : ''; $('sZ').className = sens === 'z' ? 'on' : ''; $('gD').className = dist ? 'on' : ''; $('gT').textContent = training ? '⏸ Pause' : '▶ Train'; $('gT').className = training ? 'on' : '';
+        for (let j = 0; j < 4; j++)$('u' + j).className = j === unit ? 'on' : '';
+        rows.forEach((lb, r) => { const k = ridx(r), b = lb.querySelector('button'); b.textContent = LAB[k]; b.className = 'pb' + (k === sel ? ' on' : ''); b.style.borderLeft = '4px solid ' + (unitOf(k) >= 0 ? UC[unitOf(k)] : '#c92a2a'); lb.querySelector('b').textContent = th[k].toFixed(2); lb.querySelector('input').value = th[k] });
+        const sn = sens === 'y' ? 'ŷ' : 'z₂', on = f.z.map((z, j) => z > 0 ? 'h' + (j + 1) : '').filter(Boolean);
+        $('gcap').textContent = mapm === 'u' ? `Colour = a${unit + 1} of the selected unit: zero on the off side of L${unit + 1}, a ramp growing with the distance from it.` : mapm === 's' ? `Colour = ∂${sn}/∂${LAB[sel]} at every point of the plane (green +, red −; max |∂| = ${mx.toFixed(3)}): where this parameter matters.` : CAP[mapm];
+        $('gnote').innerHTML = `Probe x = (${px0.toFixed(2)}, ${py0.toFixed(2)}) · z = [${f.z.map(z => z.toFixed(2)).join(', ')}] · on: <b>${on.join(' ') || 'none'}</b> · z₂ = ${f.z2.toFixed(2)} · ŷ = <b>${f.y.toFixed(3)}</b><br>Sensitivity: ∂${sn}/∂${LAB[sel]} = <b>${g[sel].toFixed(4)}</b> → raising ${LAB[sel]} by 0.1 changes ${sn} by ≈ ${(g[sel] * .1).toFixed(4)}`;
+        $('ghint').textContent = hint(); $('gst').textContent = stats(); $('glv').textContent = lam
+      }
+      function render() { const f = fwd(px0, py0), g = Array.from({ length: 17 }, (_, k) => gk(k, px0, py0, f)); drawNet(f, g); const mx = drawMap(f); drawBars(g); sweep(f, g); ui(f, g, mx) }
+      function size() {
+        const d = devicePixelRatio || 1; W = Math.min(gc.parentElement.clientWidth, 480); gc.width = gc.height = W * d; gc.style.width = gc.style.height = W + 'px'; cx.setTransform(d, 0, 0, d, 0, 0);
+        SW = Math.min(gs.parentElement.clientWidth - 32, 520); gs.width = SW * d; gs.height = SH * d; gs.style.width = SW + 'px'; gs.style.height = SH + 'px'; sx.setTransform(d, 0, 0, d, 0, 0); render()
+      }
+      const pos = e => { const r = gc.getBoundingClientRect(); return [Math.max(-R, Math.min(R, (e.clientX - r.left) / r.width * 2 * R - R)), Math.max(-R, Math.min(R, R - (e.clientY - r.top) / r.height * 2 * R))] };
+      gc.onpointerdown = e => { drag = true; gc.setPointerCapture(e.pointerId);[px0, py0] = pos(e); render() }; gc.onpointermove = e => { if (drag) { [px0, py0] = pos(e); render() } }; gc.onpointerup = () => drag = false;
+      const setV = v => { view = v; render() }, setM = m => { mapm = m; render() }, setS = s => { sens = s; render() };
+      $('gF').onclick = () => setV('f'); $('gB').onclick = () => setV('b'); $('mY').onclick = () => setM('y'); $('mR').onclick = () => setM('r'); $('mU').onclick = () => setM('u'); $('mS').onclick = () => setM('s');
+      $('sY').onclick = () => setS('y'); $('sZ').onclick = () => setS('z'); $('gD').onclick = () => { dist = !dist; render() };
+      $('pH').onclick = () => { th = HB.slice(); seedUsed = 'hand-built'; render() }; $('pL').onclick = () => { th = LIN.slice(); seedUsed = 'linear preset'; render() };
+      $('pR').onclick = () => { initRand(seedNext); seedUsed = 'seed ' + seedNext++; render() };
+      $('gl').oninput = e => { lam = +e.target.value; render() };
+      function loop() { if (!training) return; for (let i = 0; i < 8; i++)step(.5); render(); requestAnimationFrame(loop) }
+      $('gT').onclick = () => { training = !training; if (training) { seedUsed += seedUsed.includes('trained') ? '' : ' (trained)'; loop() } render() };
+      addEventListener('resize', size); size();
+    })();
+  </script>
+</body>
+
+</html>

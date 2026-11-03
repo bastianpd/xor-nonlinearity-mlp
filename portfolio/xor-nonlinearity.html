@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why Nonlinearity Is Necessary: Solving XOR with a ReLU MLP from Scratch</title>
+<meta name="description" content="A perceptron cannot learn XOR; a 2→4→1 ReLU network can. Proof, backpropagation from scratch in NumPy, L1 sparsity and live interactive simulations.">
+<meta name="keywords" content="XOR problem, perceptron limitations, multilayer perceptron, ReLU, nonlinear activation function, backpropagation from scratch, NumPy, L1 regularization, sparse activations, decision boundary, linear regions, interactive neural network visualization">
+<meta name="author" content="Pedro de Sousa Sebastião">
+<link rel="canonical" href="https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Why Nonlinearity Is Necessary: Solving XOR with a ReLU MLP from Scratch">
+<meta property="og:description" content="Proof, derivation, experiments and live simulations on the XOR problem.">
+<meta property="og:image" content="https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/figures/boundary_lambda005.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"CreativeWork","name":"Why Nonlinearity Is Necessary: Solving XOR with a ReLU MLP from Scratch","author":{"@type":"Person","name":"Pedro de Sousa Sebastião"},"url":"https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/","codeRepository":"https://github.com/SEU-USUARIO/xor-nonlinearity-mlp","license":"https://creativecommons.org/licenses/by-nc-nd/4.0/","keywords":"XOR problem, perceptron, MLP, ReLU, backpropagation, L1 regularization"}
+</script>
+<style>
+:root{--fg:#1d2433;--mut:#5d6578;--bd:#e3e7ef;--o:#e0662b;--b:#2b7fd9;--g:#1f9d6b;--bg:#fff;--tint:#f5f8ff}
+@media(prefers-color-scheme:dark){:root{--fg:#e9edf6;--mut:#a3adc2;--bd:#2c3446;--bg:#10141d;--tint:#171c28}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:920px;margin:0 auto;padding:48px 16px}
+h1{font:700 clamp(28px,5vw,44px)/1.15 Georgia,serif;margin:0 0 10px}
+.lead{color:var(--mut);font-size:19px;margin:0 0 22px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 22px}.tags span{border:1px solid var(--bd);border-radius:20px;padding:2px 11px;font-size:13px;background:var(--tint)}
+.cta{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 28px}
+.cta a{padding:10px 16px;border-radius:9px;text-decoration:none;font-weight:600;font-size:15px;border:1px solid var(--bd);color:var(--fg)}
+.cta a.p{background:var(--g);border-color:var(--g);color:#fff}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));margin:0 0 28px}
+.card{border:1px solid var(--bd);border-left:5px solid var(--o);border-radius:12px;padding:14px 16px;background:var(--tint)}
+.card h3{margin:0 0 4px;font-size:16px}.card p{margin:0;font-size:15px;color:var(--mut)}
+.big{font:700 28px Georgia,serif;color:var(--fg)}
+img.hero{width:100%;height:auto;border:1px solid var(--bd);border-radius:12px;background:#fff}
+iframe{width:100%;height:760px;border:1px solid var(--bd);border-radius:12px;background:#fff}
+h2{font:700 24px Georgia,serif;margin:34px 0 10px}
+footer{color:var(--mut);font-size:14px;margin-top:40px}footer a{color:inherit}
+</style>
+</head>
+<body>
+<main>
+  <h1>Why Nonlinearity Is Necessary: Solving XOR with a ReLU MLP from Scratch</h1>
+  <p class="lead">A perceptron cannot learn XOR. A 2→4→1 ReLU network can. A proof, a from-scratch backpropagation derivation in NumPy, L1 sparsity experiments and live simulations you can play with.</p>
+  <div class="tags"><span>XOR problem</span><span>perceptron limitations</span><span>multilayer perceptron</span><span>ReLU</span><span>nonlinear activation</span><span>backpropagation from scratch</span><span>NumPy</span><span>L1 regularization</span><span>sparse activations</span><span>decision boundary</span><span>interactive visualization</span></div>
+  <div class="cta">
+    <a class="p" href="https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/">Open the interactive presentation</a>
+    <a href="https://colab.research.google.com/github/SEU-USUARIO/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb">Run the notebook in Colab</a>
+    <a href="https://github.com/SEU-USUARIO/xor-nonlinearity-mlp">Source on GitHub</a>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h3>Best straight line</h3><div class="big">75.7 %</div><p>Training-accuracy ceiling for any single linear boundary on XOR.</p></div>
+    <div class="card" style="border-left-color:var(--b)"><h3>Logistic regression</h3><div class="big">54 %</div><p>Test accuracy: a coin flip, with BCE stuck at ln 2.</p></div>
+    <div class="card" style="border-left-color:var(--g)"><h3>2→4→1 ReLU MLP</h3><div class="big">98 %</div><p>Test accuracy, with or without L1 (λ = 0.005).</p></div>
+    <div class="card" style="border-left-color:#7a4fd0"><h3>L1 hidden sparsity</h3><div class="big">54 → 62 %</div><p>Exact zeros in the hidden layer; mean activation 1.66 → 0.76.</p></div>
+  </div>
+
+  <img class="hero" src="https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/figures/boundary_lambda005.png" alt="Decision boundary of the 2→4→1 ReLU MLP on XOR data, piecewise linear around two clusters">
+
+  <h2>Play with it</h2>
+  <p style="color:var(--mut)">Drag the probe, change parameters and press Train. Nothing you do here modifies the project.</p>
+  <iframe src="https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/#sg" title="Live network simulation" loading="lazy"></iframe>
+
+  <footer>By Pedro de Sousa Sebastião · CPGEI, UTFPR · <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/">CC BY-NC-ND 4.0</a> · view and simulate freely, no modifications.</footer>
+</main>
+</body>
+</html>
