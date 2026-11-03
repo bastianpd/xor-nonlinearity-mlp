@@ -2,8 +2,8 @@
 
 **A perceptron cannot learn XOR. A 2→4→1 ReLU network can. This repository shows exactly why, with a proof, a from-scratch backpropagation derivation, L1 sparsity experiments and live, interactive simulations.**
 
-[![Live presentation](https://img.shields.io/badge/Live%20presentation-open-1f9d6b)](https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/SEU-USUARIO/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb)
+[![Live presentation](https://img.shields.io/badge/Live%20presentation-open-1f9d6b)](https://bastianpd.github.io/xor-nonlinearity-mlp/)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](LICENSE)
 
 Author: **Pedro de Sousa Sebastião** · Graduate Program in Electrical and Industrial Computer Engineering (CPGEI), Federal University of Technology – Paraná (UTFPR)
@@ -14,8 +14,8 @@ Author: **Pedro de Sousa Sebastião** · Graduate Program in Electrical and Indu
 
 | What | Where |
 |---|---|
-| Interactive presentation (XOR gate, cluster explorer, live network with sensitivities, results) | https://SEU-USUARIO.github.io/xor-nonlinearity-mlp/ |
-| Notebook, run it yourself in your own Colab session | [Open in Colab](https://colab.research.google.com/github/SEU-USUARIO/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb) |
+| Interactive presentation (XOR gate, cluster explorer, live network with sensitivities, results) | https://bastianpd.github.io/xor-nonlinearity-mlp/ |
+| Notebook, run it yourself in your own Colab session | [Open in Colab](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb) |
 | Portfolio page | [`portfolio/xor-nonlinearity.html`](portfolio/xor-nonlinearity.html) |
 
 Running the simulations in the browser or in your own Colab copy never changes this repository.
