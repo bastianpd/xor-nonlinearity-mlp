@@ -363,7 +363,7 @@
         x = μ<sub>k</sub> + σ·ε, &nbsp; ε ~ 𝒩(0, I<sub>2</sub>) &nbsp;⇔&nbsp; x | k ~ 𝒩(μ<sub>k</sub>,
         σ²I<sub>2</sub>)<br>
         p(x | k) = 1 / (2πσ²) · exp( −‖x − μ<sub>k</sub>‖² / 2σ² )</div>
-      <p style="margin:6px 0 0">Level sets are circles around μ<sub>k</sub>; about 95 % of the points lie within 2σ. Our
+      <p style="margin:6px 0 0">Level sets are circles around μ<sub>k</sub>; Approximately 86.5% of the points lie within a radius of 2σ in two dimensions; 95% lie within approximately 2.45σ. Our
         four centres sit at the corners of a square: <code>(1,1) (−1,−1) (−1,1) (1,−1)</code>.</p>
     </div>
   </section>
@@ -557,9 +557,8 @@
         &gt; 0 &nbsp;(since b &lt; 0)</div>
       <p class="bad" style="padding:8px 12px;border-radius:8px;margin:10px 0 0">Contradiction: row 4 demands w₁ + w₂ + b
         &lt; 0, but rows 1–3 force w₁ + w₂ + b &gt; 0. No solution exists.</p>
-      <p style="margin:10px 0 0">Geometrically: the segments joining equal-class points (the two diagonals) cross at the
-        origin, and a half-plane is convex, so it cannot contain both ends of a diagonal without containing their
-        midpoint, which belongs to the other class's diagonal.</p>
+      <p style="margin:10px 0 0">Geometrically: The diagonals connecting equal-class points intersect at the centre of the square, (0.5, 0.5). 
+        Since this point belongs to both convex hulls, no single linear boundary can separate the two classes.</p>
     </div>
   </section>
 
@@ -629,17 +628,17 @@
     <div class="card" style="--c:var(--b)"><b>A hand-built solution</b>
       <div class="eq">h₁ = ReLU(x₁ − x₂), &nbsp; h₂ = ReLU(x₂ − x₁), &nbsp; z = h₁ + h₂ = |x₁ − x₂|<br>→ 0 on class 0, 2
         on class 1: threshold at 1 gives XOR exactly.</div>
-      <p style="margin:6px 0 0">Two hidden lines (x₁ = x₂ for both) already make the 'bend' that one line cannot. The
-        remaining units add flexibility. <b>Section 8</b> shows these lines alive, with the activation and sensitivity
-        of every parameter.</p>
+      <p style="margin:6px 0 0">The two units share <b>one</b> line, x₁ = x₂: h₁ is a ramp on one side of it and h₂ a ramp on the
+        other, so together they <b>fold</b> the plane along that single line (a V-shaped |x₁ − x₂|). That fold already
+        makes the 'bend' that one linear boundary cannot. The remaining units add flexibility.
+        <b>Section 8</b> shows the hidden lines alive, with the activation and sensitivity of every parameter.</p>
     </div>
   </section>
 
   <section id="sg" style="--c:#7a4fd0">
     <span class="n" style="background:#7a4fd0">8 · LIVE NETWORK</span>
     <h2>The network as geometry: activation and sensitivity</h2>
-    <p class="lead">The same 2 → 4 → 1 ReLU MLP of Section 5, now alive. Move the probe, drag any parameter, and see
-      which neuron switches on and how much each parameter moves the output.</p>
+    <p class="lead">The same 2 → 4 → 1 ReLU MLP of Section 5, now alive. Move the probe, select any network parameter and adjust its value to observe how the network responds.</p>
 
     <div class="card" style="--c:#7a4fd0"><b>Algebra ⇄ geometry, neuron by neuron</b>
       <table class="tg" style="margin-top:6px">
@@ -748,8 +747,8 @@
     <h3 style="font:700 21px Georgia,serif;margin:22px 0 4px">9.1 Data and the limit of a straight line</h3>
     <div class="figs c2">
       <figure class="fig"><img src="figures/dataset.png" alt="The XOR data" loading="lazy"><figcaption><b>The XOR data.</b> Circles are training points, crosses are test points.</figcaption></figure>
-      <div class="card" style="--c:var(--g);margin:0"><b>Best possible straight line</b>
-        <p style="margin:6px 0 0">An exhaustive search over 361 angles × 241 offsets finds that <b>no line exceeds 75.7 % training accuracy</b> (the theoretical ceiling is 75 %: one cluster is always on the wrong side). Both class means sit almost at the origin, (−0.077, −0.075) and (0.033, 0.014), so there is nothing for a linear boundary to grab.</p>
+      <div class="card" style="--c:var(--g);margin:0"><b>Best linear boundary found by grid search </b>
+        <p style="margin:6px 0 0">A grid search over 361 angles × 241 offsets finds a best line with <b>75.7 % training accuracy</b>. Two different limits are involved. For the four ideal centres a line classifies at most 3 of 4 correctly, so 75 % is the ceiling. For sampled points a line can cut through a cluster and win a few extra points, so a sample can land slightly above 75 %; for the underlying σ = 0.35 Gaussians the best line is only about 73.5 % (computed from the exact mixture), so part of the 75.7 % is sampling luck on these 300 points. The grid also only gives a lower bound on the best line for the sample. Both class means sit almost at the origin, (−0.077, −0.075) and (0.033, 0.014), so there is nothing for a linear boundary to grab.</p>
         <p style="margin:8px 0 0"><b>Hand-built 2-ReLU solution</b> ReLU(s) + ReLU(−s) = |x₁+x₂|, then a logit 3 − 3h: <b>96.0 % train / 95.0 % test</b> with no training at all.</p></div>
     </div>
 
