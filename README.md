@@ -1,6 +1,6 @@
 # Why Nonlinearity Is Necessary: Solving XOR with a ReLU MLP from Scratch (NumPy)
 
-**A perceptron cannot learn XOR. A 2→4→1 ReLU network can. This repository shows exactly why, with a proof, a from-scratch backpropagation derivation, L1 sparsity experiments and live, interactive simulations.**
+**A single layer perceptron cannot learn XOR. A 2→4→1 ReLU network can. This repository shows exactly why, with a proof, a from-scratch backpropagation derivation, L1 sparsity experiments and live, interactive simulations.**
 
 [![Live presentation](https://img.shields.io/badge/Live%20presentation-open-1f9d6b)](https://bastianpd.github.io/xor-nonlinearity-mlp/)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb)
@@ -8,7 +8,6 @@
 
 Author: **Pedro de Sousa Sebastião** · Graduate Program in Electrical and Industrial Computer Engineering (CPGEI), Federal University of Technology – Paraná (UTFPR)
 
-> **PT:** Atividade sobre o problema do XOR no perceptron e por que a não linearidade é necessária. Apresentação interativa + notebook com derivação completa (forward/backward), verificação de gradiente, regularização L1 e mapas de decisão. Qualquer pessoa pode **ver e simular**; **só o autor edita**.
 
 ## Try it
 
@@ -18,7 +17,7 @@ Author: **Pedro de Sousa Sebastião** · Graduate Program in Electrical and Indu
 | Notebook, run it yourself in your own Colab session | [Open in Colab](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb) |
 | Portfolio page | [`portfolio/xor-nonlinearity.html`](portfolio/xor-nonlinearity.html) |
 
-Running the simulations in the browser or in your own Colab copy never changes this repository.
+Running the simulations in the browser or in your own Colab copy.
 
 ## What is inside
 
@@ -27,7 +26,7 @@ Running the simulations in the browser or in your own Colab copy never changes t
 3. **The fix**: a 2→4→1 ReLU MLP, with every equation shown together with its matrix shapes (forward and backward).
 4. **L1 regularization on hidden activity**: R = (λ/m)‖A₁‖₁, with its subgradient entering before the ReLU backward step.
 5. **Gradient check**: central finite differences on the total objective (relative error ≈ 10⁻¹⁰ to 10⁻⁹).
-6. **Geometry**: hidden neurons as lines, linear regions, and a live network where you drag parameters and watch activations and sensitivities.
+6. **Geometry**: hidden neurons as lines, linear regions, and a live network where you drag/select parameters and watch activations and sensitivities.
 
 ## Results (seed = 67, full-batch GD, lr = 0.5, 5000 epochs)
 
@@ -53,7 +52,7 @@ All figures are in [`docs/figures`](docs/figures); the numbers are in [`results/
 ├── notebooks/
 │   └── xor_WhyNonLinearity_MLP.ipynb
 ├── portfolio/
-│   └── xor-nonlinearity.html   # standalone page for a personal website
+│   └── xor-nonlinearity.html   # standalone page
 ├── results/                 # metrics.csv, lambda_sweep.csv
 ├── scripts/make_figures.py  # regenerates docs/figures from the notebook code
 ├── CITATION.cff · LICENSE · requirements.txt
