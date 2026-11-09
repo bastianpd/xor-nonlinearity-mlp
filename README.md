@@ -15,7 +15,7 @@ Author: **Pedro de Sousa Sebastião**
 |---|---|
 | Interactive presentation (XOR gate, cluster explorer, live network with sensitivities, results) | https://bastianpd.github.io/xor-nonlinearity-mlp/ |
 | Notebook, run it yourself in your own Colab session | [Open in Colab](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb) |
-| Portfolio page | [`See more`](https://sites.google.com/view/pedro-de-sousa-p2s/home) |
+| Portfolio page | [`About Me`](https://sites.google.com/view/pedro-de-sousa-p2s/home) |
 
 Running the simulations in the browser or in your own Colab copy.
 
