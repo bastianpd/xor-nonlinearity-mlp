@@ -6,7 +6,7 @@
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/bastianpd/xor-nonlinearity-mlp/blob/main/notebooks/xor_WhyNonLinearity_MLP.ipynb)
 [![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](LICENSE)
 
-Author: **Pedro de Sousa Sebastião** · Graduate Program in Electrical and Industrial Computer Engineering (CPGEI), Federal University of Technology – Paraná (UTFPR)
+Author: **Pedro de Sousa Sebastião**
 
 
 ## Try it
